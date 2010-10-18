@@ -9,6 +9,9 @@ OBJECTS = $(BINARY).o
 
 all: $(BINARY)
 
+$(BINARY): $(BINARY).c 3dmath.c
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $(BINARY) 3dmath.c $(BINARY).c
+
 clean:
 	rm -f $(BINARY).o $(BINARY)
 

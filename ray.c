@@ -6,17 +6,15 @@
 #include <string.h>
 #include <math.h>
 
+#include "3dmath.h"
+
 #define WIDTH 1080
 #define HEIGHT 1080
 #define BUFFER_SIZE (WIDTH * HEIGHT * 4)
 
-#define LENGTH(array)   (sizeof(array) / sizeof(array[0]))
+#define LENGTH(array) (sizeof(array) / sizeof(array[0]))
 #define MAX(x, y) (x > y ? x : y)
 #define MIN(x, y) (x < y ? x : y)
-#define POW2(x) ((x) * (x))
-#define POW3(x) ((x) * (x) * (x))
-#define POW4(x) ((x) * (x) * (x) * (x))
-#define POW5(x) ((x) * (x) * (x) * (x) * (x))
 
 typedef struct {
     float position[3];
@@ -29,85 +27,26 @@ typedef struct {
     float diffuse[3];
 } Light;
 
-static Object objects[2] = {{.position={1.5, 0, -20}, .radius=.1, .diffuse={0, 0, .3}},
-                            {.position={-1.5, 0, -30}, .radius=.1, .diffuse={0, 0, .3}}};
-static Light lights[1] = {{.position={0, 2, -4}, .diffuse={0, .7, .7}}};
 static unsigned char buffer[BUFFER_SIZE];
-
-static float
-dot(float x[3], float y[3]) {
-    return x[0] * y[0] + x[1] * y[1] + x[2] * y[2];
-}
+static Object objects[2] = {{.position={0, 0, 2}, .radius=1, .diffuse={0, 0, .3}},
+                            {.position={-1.5, 0, -30}, .radius=.1, .diffuse={0, 0, .3}}};
 
 static void
-normalize(float x[3]) {
-    float len;
-    int i;
+trace(float s[3], float d[3], float pixel[3]) {
+    float t = sphere_intersect(s, d, objects[0].position, objects[0].radius);
 
-    len = sqrt(dot(x, x));
-
-    for(i = 0; i < 3; ++i)
-        x[i] /= len;
-}
-
-static void
-trace(float s[3], float d[3], float pixel[3], int N) {
-    int i, j;
-    float D;
-    float l[3];
-    float n[3];
-    float t;
-    float v[3];
-    float vd, vv;
-    float y[3];
-    Object *object = objects;
-    Light *light = lights;
-
-    for(j = 0; j < LENGTH(objects); ++j) {
-        object = &objects[j];
-
-        for(i = 0; i < 3; ++i)
-            v[i] = s[i] - object->position[i];
-
-        vd = dot(v, d);
-        vv = dot(v, v);
-
-        D = POW2(2 * vd) - 4 * (vv - POW2(object->radius));
-
-        if(D < 0) {
-            pixel[0] += .3;
-            pixel[1] += .15;
-            pixel[2] += .075;
-        } else {
-
-            t = MIN(-vd + sqrt(D), -vd - sqrt(D));
-
-            for(i = 0; i < 3; ++i) {
-                y[i] = s[i] + t * d[i];
-                n[i] = y[i] - object->position[i];
-                l[i] = light->position[i] - object->position[i];
-            }
-
-            normalize(n);
-            normalize(l);
-
-            for(i = 0; i < 3; ++i) {
-                n[i] = (object->diffuse[i] + light->diffuse[i]) * dot(n, l);
-                //n[i] = object->diffuse[i];
-                pixel[i] += n[i];
-            }
-
-            if(N)
-                trace(y, n, pixel, N - 1);
-        }
-    }
+    //printf("%f.\n", objects[0].position[0]);
+    if(t > 0)
+        pixel[1] = .5;
+    else
+        pixel[2] = .5;
 }
 
 static void
 display(void) {
     int i, j;
     float x, y;
-    float s[3] = {0, 0, 1};
+    float s[3] = {0, 0, 0};
     float d[3];
     float pixel[3];
 
@@ -119,12 +58,15 @@ display(void) {
 
         d[0] = x / (WIDTH / 2);
         d[1] = y / (HEIGHT / 2);
-        d[2] = -1;
+        d[2] = 1;
+
+        normalize(d);
+
+        //if(!(i % 256))
+            //printf("%f, %f, %f.\n", d[0], d[1], d[2]);
 
         memset(pixel, '\0', sizeof(pixel));
-        trace(s, d, pixel, 0);
-
-        //printf("%f %f %f\n", pixel[0], pixel[1], pixel[2]);
+        trace(s, d, pixel);
 
         for(j = 0; j < 3; ++j)
             buffer[i + j] = MIN(255 * pixel[j], 255);
