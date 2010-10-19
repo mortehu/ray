@@ -19,18 +19,29 @@ normalize(float x[3]) {
 }
 
 float
-sphere_intersect(float s[3], float d[3], float c[3], float r) {
+sphere_intersect(float y[3], float r[3], float s[3], float d[3], float c[3], float R) {
     int i;
-    float D;
-    float v[3];
+    float D, n[3], t, v[3];
 
     for(i = 0; i < 3; ++i)
         v[i] = s[i] - c[i];
 
-    D = POW2(dot(v, d)) - 4 * (dot(v, v) - POW2(r));
+    D = POW2(dot(v, d)) - (dot(v, v) - POW2(R));
 
     if(D < 0)
         return -1;
 
-    return 1;
+    t = -dot(v, d) - D;
+
+    for(i = 0; i < 3; ++i) {
+        y[i] = s[i] + t * d[i];
+        n[i] = y[i] - c[i];
+    }
+
+    normalize(n);
+
+    for(i = 0; i < 3; ++i)
+        r[i] = d[i] - 2 * dot(n, d) * n[i];
+
+    return t;
 }

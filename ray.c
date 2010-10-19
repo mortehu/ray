@@ -28,25 +28,40 @@ typedef struct {
 } Light;
 
 static unsigned char buffer[BUFFER_SIZE];
-static Object objects[2] = {{.position={0, 0, 2}, .radius=1, .diffuse={0, 0, .3}},
-                            {.position={-1.5, 0, -30}, .radius=.1, .diffuse={0, 0, .3}}};
+static Object objects[2] = {{.position={0, 0, -2}, .radius=1, .diffuse={0, 0, .3}},
+                            {.position={0, 0, -3}, .radius=1, .diffuse={0, 0, .3}}};
+//static Light lights[1] = {{.position={1, 0, 0}, .diffuse={0, 0, .3}}};
 
 static void
 trace(float s[3], float d[3], float pixel[3]) {
-    float t = sphere_intersect(s, d, objects[0].position, objects[0].radius);
+    int i;
+    float intensity, l[3], r[3], t, y[3];
 
-    //printf("%f.\n", objects[0].position[0]);
-    if(t > 0)
-        pixel[1] = .5;
-    else
-        pixel[2] = .5;
+    if(d[1] < 0) {
+        if((int)(d[0] / d[1] * 20) % 2)
+            pixel[0] += .1;
+
+        if((int)(d[1] / d[0] * 20) % 2)
+            pixel[1] += .1;
+    }
+
+    l[0] = -1;
+    l[1] = 1;
+    l[2] = 1;
+
+    normalize(l);
+
+    t = sphere_intersect(y, r, s, d, objects[0].position, objects[0].radius);
+
+    //if(t > 0)
+        //pixel[2] = dot(l, r);
 }
 
 static void
 display(void) {
+    static float s[3] = {0, 0, 0};
     int i, j;
     float x, y;
-    float s[3] = {0, 0, 0};
     float d[3];
     float pixel[3];
 
@@ -58,12 +73,9 @@ display(void) {
 
         d[0] = x / (WIDTH / 2);
         d[1] = y / (HEIGHT / 2);
-        d[2] = 1;
+        d[2] = -1;
 
         normalize(d);
-
-        //if(!(i % 256))
-            //printf("%f, %f, %f.\n", d[0], d[1], d[2]);
 
         memset(pixel, '\0', sizeof(pixel));
         trace(s, d, pixel);
