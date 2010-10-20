@@ -28,33 +28,35 @@ typedef struct {
 } Light;
 
 static unsigned char buffer[BUFFER_SIZE];
-static Object objects[2] = {{.position={0, 0, -2}, .radius=1, .diffuse={0, 0, .3}},
-                            {.position={0, 0, -3}, .radius=1, .diffuse={0, 0, .3}}};
-//static Light lights[1] = {{.position={1, 0, 0}, .diffuse={0, 0, .3}}};
+static Object objects[] = {{.position={-1.414, -1, -3}, .radius=1, .diffuse={.8, 0, .8}},
+                            {.position={0, 1, -5}, .radius=1, .diffuse={0, .8, .8}},
+                            {.position={1.414, -1, -3}, .radius=1, .diffuse={.8, .8, 0}}};
+static Light lights[] = {{.position={-3, 3, -4}, .diffuse={0, .6, .6}},
+                         {.position={0, 30, -4}, .diffuse={1, 1, 1}}};
 
 static void
-trace(float s[3], float d[3], float pixel[3]) {
-    int i;
-    float intensity, l[3], r[3], t, y[3];
+trace(float s[3], float d[3], float pixel[3], int n) {
+    int i, j, k, m;
+    float l[3], r[3], t, y[3];
 
-    if(d[1] < 0) {
-        if((int)(d[0] / d[1] * 20) % 2)
-            pixel[0] += .1;
+    for(j = 0; j < LENGTH(objects); ++j) {
+        t = sphere_intersect(y, r, s, d, objects[j].position, objects[j].radius);
 
-        if((int)(d[1] / d[0] * 20) % 2)
-            pixel[1] += .1;
+        if(t > 0) {
+            for(m = 0; m < LENGTH(lights); ++m) {
+                for(i = 0; i < 3; ++i)
+                    l[i] = lights[m].position[i] - y[i];
+
+                normalize(l);
+                for(k = 0; k < 3; ++k)
+                    pixel[k] += lights[m].diffuse[k] * objects[j].diffuse[k] * (MAX(dot(l, r), 0)) / (1 << n);
+
+                trace(y, r, pixel, n + 1);
+            }
+        } else {
+            continue;
+        }
     }
-
-    l[0] = -1;
-    l[1] = 1;
-    l[2] = 1;
-
-    normalize(l);
-
-    t = sphere_intersect(y, r, s, d, objects[0].position, objects[0].radius);
-
-    //if(t > 0)
-        //pixel[2] = dot(l, r);
 }
 
 static void
@@ -78,7 +80,7 @@ display(void) {
         normalize(d);
 
         memset(pixel, '\0', sizeof(pixel));
-        trace(s, d, pixel);
+        trace(s, d, pixel, 1);
 
         for(j = 0; j < 3; ++j)
             buffer[i + j] = MIN(255 * pixel[j], 255);
@@ -96,7 +98,7 @@ reshape(int w, int h) {
 
 static void
 keyboard(unsigned char key, int x, int y) {
-    if (key == 27)
+    if(key == 27)
         exit(0);
 }
 
