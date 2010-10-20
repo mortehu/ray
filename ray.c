@@ -30,6 +30,7 @@ typedef struct {
 static unsigned char buffer[BUFFER_SIZE];
 static Object objects[] = {{.position={-1.414, -1, -3}, .radius=1, .diffuse={.8, 0, .8}},
                             {.position={0, 1, -5}, .radius=1, .diffuse={0, .8, .8}},
+                            {.position={0, -2, -9}, .radius=1, .diffuse={.8, .8, .8}},
                             {.position={1.414, -1, -3}, .radius=1, .diffuse={.8, .8, 0}}};
 static Light lights[] = {{.position={-3, 3, -4}, .diffuse={0, .6, .6}},
                          {.position={0, 30, -4}, .diffuse={1, 1, 1}}};
@@ -53,8 +54,6 @@ trace(float s[3], float d[3], float pixel[3], int n) {
 
                 trace(y, r, pixel, n + 1);
             }
-        } else {
-            continue;
         }
     }
 }
@@ -73,13 +72,14 @@ display(void) {
         x = (i / 4) % WIDTH - WIDTH / 2;
         y = (i / 4) / WIDTH - HEIGHT / 2;
 
+        memset(pixel, '\0', sizeof(pixel));
+
         d[0] = x / (WIDTH / 2);
-        d[1] = y / (HEIGHT / 2);
+        d[1] = y / (HEIGHT / 2) / ((float)WIDTH / (float)(HEIGHT));
         d[2] = -1;
 
         normalize(d);
 
-        memset(pixel, '\0', sizeof(pixel));
         trace(s, d, pixel, 1);
 
         for(j = 0; j < 3; ++j)
