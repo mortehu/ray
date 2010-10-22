@@ -8,13 +8,15 @@
 
 #include "3dmath.h"
 
-#define WIDTH 1080
-#define HEIGHT 1080
+#define WIDTH 1920
+#define HEIGHT 1200
 #define BUFFER_SIZE (WIDTH * HEIGHT * 4)
 
 #define LENGTH(array) (sizeof(array) / sizeof(array[0]))
 #define MAX(x, y) (x > y ? x : y)
 #define MIN(x, y) (x < y ? x : y)
+
+#define TAU 6.28318531
 
 typedef struct {
     float position[3];
@@ -28,12 +30,16 @@ typedef struct {
 } Light;
 
 static unsigned char buffer[BUFFER_SIZE];
-static Object objects[] = {{.position={-1.414, -1, -3}, .radius=1, .diffuse={.8, 0, .8}},
-                            {.position={0, 1, -5}, .radius=1, .diffuse={0, .8, .8}},
-                            {.position={0, -2, -9}, .radius=1, .diffuse={.8, .8, .8}},
-                            {.position={1.414, -1, -3}, .radius=1, .diffuse={.8, .8, 0}}};
-static Light lights[] = {{.position={-3, 3, -4}, .diffuse={0, .6, .6}},
-                         {.position={0, 30, -4}, .diffuse={1, 1, 1}}};
+static Object objects[] = {
+    {.position={-1.414, -1, -3}, .radius=1, .diffuse={.8, 0, .8}},
+    {.position={0, 1.414, -3}, .radius=1, .diffuse={0, .8, .8}},
+    {.position={0, 0, -3}, .radius=.25, .diffuse={.8, .8, .8}},
+    {.position={1.414, -1, -3}, .radius=1, .diffuse={.8, .8, 0}}
+};
+static Light lights[] = {
+    {.position={-3, 3, -4}, .diffuse={0, .6, .6}},
+    {.position={0, 30, -4}, .diffuse={1, 1, 1}}
+};
 
 static void
 trace(float s[3], float d[3], float pixel[3], int n) {
@@ -65,6 +71,15 @@ display(void) {
     float x, y;
     float d[3];
     float pixel[3];
+    float time = (float)glutGet(GLUT_ELAPSED_TIME) / 1000;
+
+    objects[0].position[0] = 1.5 * cos(time);
+    objects[0].position[1] = 1.5 * sin(time);
+    objects[1].position[0] = 1.5 * cos(time + 1/3. * TAU);
+    objects[1].position[1] = 1.5 * sin(time + 1/3. * TAU);
+    objects[3].position[0] = 1.5 * cos(time + 2/3. * TAU);
+    objects[3].position[1] = 1.5 * sin(time + 2/3. * TAU);
+    objects[2].position[2] = -3 + 2 * sin(time * 3);
 
     memset(buffer, '\0', sizeof(buffer));
 
@@ -75,7 +90,7 @@ display(void) {
         memset(pixel, '\0', sizeof(pixel));
 
         d[0] = x / (WIDTH / 2);
-        d[1] = y / (HEIGHT / 2) / ((float)WIDTH / (float)(HEIGHT));
+        d[1] = y / (HEIGHT / 2) * ((float)HEIGHT / (float)WIDTH);
         d[2] = -1;
 
         normalize(d);
@@ -124,6 +139,7 @@ main(int argc, char **argv) {
         return 1;
 
     glutDisplayFunc(display);
+    glutIdleFunc(display);
     glutReshapeFunc(reshape);
     glutKeyboardFunc(keyboard);
 
