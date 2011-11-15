@@ -1,15 +1,16 @@
-#include <GL/gl.h>
-#include <GL/glu.h>
-#include <GL/glut.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <pthread.h>
+#include <GL/gl.h>
+#include <GL/glu.h>
+#include <GL/glut.h>
 
 #include "3dmath.h"
 
-#define WIDTH 1920
-#define HEIGHT 1200
+#define WIDTH 1000
+#define HEIGHT 1000
 #define BUFFER_SIZE (WIDTH * HEIGHT * 4)
 
 #define LENGTH(array) (sizeof(array) / sizeof(array[0]))
@@ -29,6 +30,7 @@ typedef struct {
     float diffuse[3];
 } Light;
 
+static unsigned char threaded = 0;
 static unsigned char buffer[BUFFER_SIZE];
 static Object objects[] = {
     {.position={-1.414, -1, -3}, .radius=1, .diffuse={.8, 0, .8}},
@@ -65,30 +67,17 @@ trace(float s[3], float d[3], float pixel[3], int n) {
 }
 
 static void
-display(void) {
+trace_line(int l, unsigned char *buf) {
     static float s[3] = {0, 0, 0};
-    int i, j;
-    float x, y;
-    float d[3];
-    float pixel[3];
-    float time = (float)glutGet(GLUT_ELAPSED_TIME) / 1000;
+    float y = l - HEIGHT / 2;
 
-    objects[0].position[0] = 1.5 * cos(time);
-    objects[0].position[1] = 1.5 * sin(time);
-    objects[1].position[0] = 1.5 * cos(time + 1/3. * TAU);
-    objects[1].position[1] = 1.5 * sin(time + 1/3. * TAU);
-    objects[3].position[0] = 1.5 * cos(time + 2/3. * TAU);
-    objects[3].position[1] = 1.5 * sin(time + 2/3. * TAU);
-    objects[2].position[2] = -3 + 2 * sin(time * 3);
+    for(int i = 0; i < 4 * WIDTH; i += 4) {
+        float x = (i / 4) - WIDTH / 2;
 
-    memset(buffer, '\0', sizeof(buffer));
-
-    for(i = 0; i < BUFFER_SIZE; i += 4) {
-        x = (i / 4) % WIDTH - WIDTH / 2;
-        y = (i / 4) / WIDTH - HEIGHT / 2;
-
+        float pixel[3];
         memset(pixel, '\0', sizeof(pixel));
 
+        float d[3];
         d[0] = x / (WIDTH / 2);
         d[1] = y / (HEIGHT / 2) * ((float)HEIGHT / (float)WIDTH);
         d[2] = -1;
@@ -97,12 +86,64 @@ display(void) {
 
         trace(s, d, pixel, 1);
 
-        for(j = 0; j < 3; ++j)
-            buffer[i + j] = MIN(255 * pixel[j], 255);
+        for(int j = 0; j < 3; ++j)
+            buf[i + j] = MIN(255 * pixel[j], 255);
     }
+}
 
+static void *
+thread(void *arg) {
+    long line = (long) arg;
+
+    trace_line(line, buffer + line * 4 * WIDTH);
+
+    pthread_exit(NULL);
+}
+
+static void
+trace_scene(unsigned char *buf) {
+    if(threaded) {
+        pthread_attr_t attr;
+        pthread_attr_init(&attr);
+        pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+
+        pthread_t threads[HEIGHT];
+        for(long i = 0; i < HEIGHT; ++i) {
+            int ret = pthread_create(&threads[i], &attr, thread, (void *)i);
+
+            if(ret) {
+                fprintf(stderr, "pthread_create(): %d\n", ret);
+                exit(EXIT_FAILURE);
+            }
+        }
+
+        void *status;
+        for(long i = 0; i < HEIGHT; ++i)
+            pthread_join(threads[i], &status);
+    } else {
+        for(int i = 0; i < HEIGHT; ++i)
+            trace_line(i, buffer + i * 4 * WIDTH);
+    }
+}
+
+static void
+display(void) {
+    static int count = 0;
+    ++count;
+    if(count > 10000)
+        exit(0);
+    float time = (float)glutGet(GLUT_ELAPSED_TIME) / 1000;
+
+    objects[0].position[0] = 1.5 * cos(time);
+    objects[0].position[1] = 1.5 * sin(time);
+    objects[1].position[0] = 1.5 * cos(time + 1/3. * TAU);
+    objects[1].position[1] = 1.5 * sin(time + 1/3. * TAU);
+    objects[3].position[0] = 1.5 * cos(time + 2/3. * TAU);
+    objects[3].position[1] = 1.5 * sin(time + 2/3. * TAU);
+    objects[2].position[2] = -3 + 2 * sin(time * 2);
+
+    trace_scene(buffer);
     glDrawPixels(WIDTH, HEIGHT, GL_BGRA, GL_UNSIGNED_BYTE, buffer);
-
     glutSwapBuffers();
 }
 
@@ -113,8 +154,17 @@ reshape(int w, int h) {
 
 static void
 keyboard(unsigned char key, int x, int y) {
-    if(key == 27)
-        exit(0);
+    switch(key) {
+    case 27:
+        exit(EXIT_SUCCESS);
+        break;
+    case 't':
+        if(threaded)
+            threaded = 0;
+        else
+            threaded = 1;
+        break;
+    }
 }
 
 static int
@@ -123,7 +173,7 @@ init(int argc, char **argv, int w, int h) {
 
     glutInitWindowPosition(0, 0);
     glutInitWindowSize(w, h);
-    glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA);
+    glutInitDisplayMode(GLUT_RGB);
     glutCreateWindow(argv[0]);
 
     glDepthMask(0);
@@ -136,7 +186,7 @@ init(int argc, char **argv, int w, int h) {
 int
 main(int argc, char **argv) {
     if (init(argc, argv, WIDTH, HEIGHT))
-        return 1;
+        return EXIT_FAILURE;
 
     glutDisplayFunc(display);
     glutIdleFunc(display);
@@ -145,5 +195,5 @@ main(int argc, char **argv) {
 
     glutMainLoop();
 
-    return 0;
+    return EXIT_SUCCESS;
 }
