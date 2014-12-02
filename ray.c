@@ -16,6 +16,14 @@
 
 #define TAU 6.28318531
 
+#if __GNUC__ >= 3
+#  define unlikely(cond) __builtin_expect ((cond), 0)
+#  define likely(cond)   __builtin_expect ((cond), 1)
+#else
+#  define unlikely(cond) (cond)
+#  define likely(cond) (cond)
+#endif
+
 typedef struct {
     float position[3];
     float radius;
@@ -56,7 +64,7 @@ trace(const float s[3], const float d[3], float pixel[3], int n, unsigned int ma
 
         t = sphere_intersect(y, r, s, d, objects[j].position, objects[j].radius);
 
-        if(t > 0) {
+        if(unlikely(t > 0)) {
             for(m = 0; m < LENGTH(lights); ++m) {
                 for(i = 0; i < 3; ++i)
                     l[i] = lights[m].position[i] - y[i];
