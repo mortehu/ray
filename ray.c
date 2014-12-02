@@ -5,6 +5,7 @@
 #include <string.h>
 #include <math.h>
 #include <pthread.h>
+#include <unistd.h>
 
 #include "3dmath.h"
 
@@ -36,8 +37,10 @@ typedef struct {
 } Light;
 
 typedef struct {
+    pthread_mutex_t mutex;
+
     unsigned char* buffer;
-    long line;
+    long next_line;
 } ThreadArg;
 
 static float trace_vectors[HEIGHT][WIDTH][3];
@@ -101,7 +104,16 @@ static void *
 thread(void *arg) {
     ThreadArg* thread_arg = arg;
 
-    trace_line(thread_arg->line, thread_arg->buffer + thread_arg->line * 4 * WIDTH);
+    for (;;) {
+        pthread_mutex_lock(&thread_arg->mutex);
+        if (thread_arg->next_line == HEIGHT) break;
+        long line = thread_arg->next_line++;
+        pthread_mutex_unlock(&thread_arg->mutex);
+
+        trace_line(line, thread_arg->buffer + line * 4 * WIDTH);
+    }
+
+    pthread_mutex_unlock(&thread_arg->mutex);
 
     return NULL;
 }
@@ -134,27 +146,24 @@ trace_scene(float time, unsigned char *buf, int threaded) {
     objects[2].position[2] = -3 + 2 * sin(time * 2);
 
     if(threaded) {
-        pthread_attr_t attr;
-        pthread_attr_init(&attr);
-        pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+        ThreadArg arg;
+        memset(&arg, 0, sizeof(arg));
+        pthread_mutex_init(&arg.mutex, NULL);
+        arg.buffer = buf;
 
-        ThreadArg thread_args[HEIGHT];
-        pthread_t threads[HEIGHT];
-        for(long i = 0; i < HEIGHT; ++i) {
-            thread_args[i].line = i;
-            thread_args[i].buffer = buf;
+        int num_threads = sysconf(_SC_NPROCESSORS_CONF) - 1;
+        pthread_t* threads = NULL;
+        if (num_threads > 0) {
+          threads = calloc(sizeof(*threads), num_threads);
 
-            int ret = pthread_create(&threads[i], &attr, thread, &thread_args[i]);
-
-            if(ret) {
-                fprintf(stderr, "pthread_create(): %d\n", ret);
-                exit(EXIT_FAILURE);
-            }
+          for (int i = 0; i < num_threads; ++i)
+            pthread_create(&threads[i], NULL, thread, &arg);
         }
 
-        void *status;
-        for(long i = 0; i < HEIGHT; ++i)
-            pthread_join(threads[i], &status);
+        thread(&arg);
+
+        for(int i = 0; i < num_threads; ++i)
+            pthread_join(threads[i], NULL);
     } else {
         for(int i = 0; i < HEIGHT; ++i)
             trace_line(i, buf + i * 4 * WIDTH);
