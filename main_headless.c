@@ -7,7 +7,8 @@
 
 static const size_t kFramesToRender = 100;
 
-int main(int argc, char** argv) {
+int
+main(int argc, char** argv) {
     fprintf(stderr, "Rendering %zu frames\n", kFramesToRender);
   
     unsigned char* buffer = calloc(4, WIDTH * HEIGHT);

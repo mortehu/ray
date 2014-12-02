@@ -102,7 +102,6 @@ thread(void *arg) {
 
 void
 trace_scene(float time, unsigned char *buf, int threaded) {
-
     objects[0].position[0] = 1.5 * cos(time);
     objects[0].position[1] = 1.5 * sin(time);
     objects[1].position[0] = 1.5 * cos(time + 1/3. * TAU);
@@ -110,6 +109,7 @@ trace_scene(float time, unsigned char *buf, int threaded) {
     objects[3].position[0] = 1.5 * cos(time + 2/3. * TAU);
     objects[3].position[1] = 1.5 * sin(time + 2/3. * TAU);
     objects[2].position[2] = -3 + 2 * sin(time * 2);
+
     if(threaded) {
         pthread_attr_t attr;
         pthread_attr_init(&attr);
