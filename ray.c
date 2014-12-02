@@ -59,9 +59,12 @@ trace(float s[3], const float d[3], float pixel[3], int n) {
                 for(i = 0; i < 3; ++i)
                     l[i] = lights[m].position[i] - y[i];
 
-                normalize(l);
-                for(k = 0; k < 3; ++k)
-                    pixel[k] += lights[m].diffuse[k] * objects[j].diffuse[k] * (MAX(dot(l, r), 0)) / (1 << n);
+                float lr_dot = dot(l, r);
+                if (lr_dot > 0) {
+                  float scale = lr_dot / sqrtf(dot(l, l)) / (1 << n);
+                  for(k = 0; k < 3; ++k)
+                      pixel[k] += lights[m].diffuse[k] * objects[j].diffuse[k] * scale;
+                }
 
                 trace(y, r, pixel, n + 1);
             }
