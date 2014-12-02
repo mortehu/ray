@@ -43,10 +43,10 @@ sphere_intersect(float* restrict y, float* restrict r,
         n[i] = y[i] - c[i];
     }
 
-    normalize(n);
+    float two_dot_nd_div_sq_n_mag = 2.0f * dot(n, d) / dot(n, n);
 
-    for(i = 0; i < 3; ++i)
-        r[i] = d[i] - 2 * dot(n, d) * n[i];
+    for (i = 0; i < 3; ++i)
+      r[i] = d[i] - two_dot_nd_div_sq_n_mag * n[i];
 
     return t;
 }
