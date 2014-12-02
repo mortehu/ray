@@ -5,7 +5,7 @@
 #define POW2(x) ((x) * (x))
 
 float
-dot(float x[3], float y[3]) {
+dot(const float x[3], const float y[3]) {
     return x[0] * y[0] + x[1] * y[1] + x[2] * y[2];
 }
 
@@ -21,7 +21,7 @@ normalize(float x[3]) {
 }
 
 float
-sphere_intersect(float y[3], float r[3], float s[3], float d[3], float c[3], float R) {
+sphere_intersect(float y[3], float r[3], const float s[3], const float d[3], const float c[3], float R) {
     int i;
     float D, n[3], t, v[3];
 
