@@ -102,7 +102,7 @@ trace(const float s[3], const float d[3], float pixel[3], int n, unsigned int ma
 
 static void
 trace_line(int l, unsigned char *buf) {
-    static const float s[3] = {0, 0, 0};
+    static const float s[3] = {0, 0, 8};
 
     for(int i = 0; i < WIDTH; ++i, buf += 4) {
         float pixel[3] = { 0, 0, 0 };
@@ -138,8 +138,8 @@ initialize_trace_vectors(void) {
     for(int y = 0; y < HEIGHT; ++y) {
         for(int x = 0; x < WIDTH; ++x) {
           float* d = trace_vectors[y][x];
-          d[0] = ((float)x / WIDTH - 0.5f) * 2.0f;
-          d[1] = ((float)y / HEIGHT - 0.5f) * 2.0f * ((float)HEIGHT / WIDTH);
+          d[0] = ((float)x / WIDTH - 0.5f) * 0.5f;
+          d[1] = ((float)y / HEIGHT - 0.5f) * 0.5f * ((float)HEIGHT / WIDTH);
           d[2] = -1;
           normalize(d);
         }
