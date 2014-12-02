@@ -1,16 +1,13 @@
+#include "ray.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
 #include <pthread.h>
-#include <GL/gl.h>
-#include <GL/glu.h>
-#include <GL/glut.h>
 
 #include "3dmath.h"
 
-#define WIDTH 1000
-#define HEIGHT 1000
 #define BUFFER_SIZE (WIDTH * HEIGHT * 4)
 
 #define LENGTH(array) (sizeof(array) / sizeof(array[0]))
@@ -30,8 +27,11 @@ typedef struct {
     float diffuse[3];
 } Light;
 
-static unsigned char threaded = 0;
-static unsigned char buffer[BUFFER_SIZE];
+typedef struct {
+    unsigned char* buffer;
+    long line;
+} ThreadArg;
+
 static Object objects[] = {
     {.position={-1.414, -1, -3}, .radius=1, .diffuse={.8, 0, .8}},
     {.position={0, 1.414, -3}, .radius=1, .diffuse={0, .8, .8}},
@@ -93,23 +93,35 @@ trace_line(int l, unsigned char *buf) {
 
 static void *
 thread(void *arg) {
-    long line = (long) arg;
+    ThreadArg* thread_arg = arg;
 
-    trace_line(line, buffer + line * 4 * WIDTH);
+    trace_line(thread_arg->line, thread_arg->buffer + thread_arg->line * 4 * WIDTH);
 
-    pthread_exit(NULL);
+    return NULL;
 }
 
-static void
-trace_scene(unsigned char *buf) {
+void
+trace_scene(float time, unsigned char *buf, int threaded) {
+
+    objects[0].position[0] = 1.5 * cos(time);
+    objects[0].position[1] = 1.5 * sin(time);
+    objects[1].position[0] = 1.5 * cos(time + 1/3. * TAU);
+    objects[1].position[1] = 1.5 * sin(time + 1/3. * TAU);
+    objects[3].position[0] = 1.5 * cos(time + 2/3. * TAU);
+    objects[3].position[1] = 1.5 * sin(time + 2/3. * TAU);
+    objects[2].position[2] = -3 + 2 * sin(time * 2);
     if(threaded) {
         pthread_attr_t attr;
         pthread_attr_init(&attr);
         pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
+        ThreadArg thread_args[HEIGHT];
         pthread_t threads[HEIGHT];
         for(long i = 0; i < HEIGHT; ++i) {
-            int ret = pthread_create(&threads[i], &attr, thread, (void *)i);
+            thread_args[i].line = i;
+            thread_args[i].buffer = buf;
+
+            int ret = pthread_create(&threads[i], &attr, thread, &thread_args[i]);
 
             if(ret) {
                 fprintf(stderr, "pthread_create(): %d\n", ret);
@@ -122,78 +134,6 @@ trace_scene(unsigned char *buf) {
             pthread_join(threads[i], &status);
     } else {
         for(int i = 0; i < HEIGHT; ++i)
-            trace_line(i, buffer + i * 4 * WIDTH);
+            trace_line(i, buf + i * 4 * WIDTH);
     }
-}
-
-static void
-display(void) {
-    static int count = 0;
-    ++count;
-    if(count > 10000)
-        exit(0);
-    float time = (float)glutGet(GLUT_ELAPSED_TIME) / 1000;
-
-    objects[0].position[0] = 1.5 * cos(time);
-    objects[0].position[1] = 1.5 * sin(time);
-    objects[1].position[0] = 1.5 * cos(time + 1/3. * TAU);
-    objects[1].position[1] = 1.5 * sin(time + 1/3. * TAU);
-    objects[3].position[0] = 1.5 * cos(time + 2/3. * TAU);
-    objects[3].position[1] = 1.5 * sin(time + 2/3. * TAU);
-    objects[2].position[2] = -3 + 2 * sin(time * 2);
-
-    trace_scene(buffer);
-    glDrawPixels(WIDTH, HEIGHT, GL_BGRA, GL_UNSIGNED_BYTE, buffer);
-    glutSwapBuffers();
-}
-
-static void
-reshape(int w, int h) {
-    glViewport(0, 0, w, h);
-}
-
-static void
-keyboard(unsigned char key, int x, int y) {
-    switch(key) {
-    case 27:
-        exit(EXIT_SUCCESS);
-        break;
-    case 't':
-        if(threaded)
-            threaded = 0;
-        else
-            threaded = 1;
-        break;
-    }
-}
-
-static int
-init(int argc, char **argv, int w, int h) {
-    glutInit(&argc, argv);
-
-    glutInitWindowPosition(0, 0);
-    glutInitWindowSize(w, h);
-    glutInitDisplayMode(GLUT_RGB);
-    glutCreateWindow(argv[0]);
-
-    glDepthMask(0);
-    glDisable(GL_DEPTH_TEST);
-    glDisable(GL_BLEND);
-
-    return 0;
-}
-
-int
-main(int argc, char **argv) {
-    if (init(argc, argv, WIDTH, HEIGHT))
-        return EXIT_FAILURE;
-
-    glutDisplayFunc(display);
-    glutIdleFunc(display);
-    glutReshapeFunc(reshape);
-    glutKeyboardFunc(keyboard);
-
-    glutMainLoop();
-
-    return EXIT_SUCCESS;
 }
