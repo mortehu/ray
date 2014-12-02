@@ -179,6 +179,7 @@ trace_scene(float time, unsigned char *buf, int threaded) {
 
         for(int i = 0; i < num_threads; ++i)
             pthread_join(threads[i], NULL);
+        free(threads);
     } else {
         for(int i = 0; i < HEIGHT; ++i)
             trace_line(i, buf + i * 4 * WIDTH);
