@@ -74,19 +74,16 @@ trace(float s[3], const float d[3], float pixel[3], int n) {
 
 static void
 trace_line(int l, unsigned char *buf) {
-    static float s[3] = {0, 0, 0};
-    float y = l - HEIGHT / 2;
+    static const float s[3] = {0, 0, 0};
 
-    for(int i = 0; i < WIDTH; ++i) {
-        float pixel[3];
-        memset(pixel, '\0', sizeof(pixel));
+    for(int i = 0; i < WIDTH; ++i, buf += 4) {
+        float pixel[3] = { 0, 0, 0 };
 
-        const float* d = trace_vectors[l][i];
+        trace(s, trace_vectors[l][i], pixel, 1);
 
-        trace(s, d, pixel, 1);
-
-        for(int j = 0; j < 3; ++j)
-            buf[i * 4 + j] = MIN(255 * pixel[j], 255);
+        buf[0] = MIN(pixel[0], 1.0f) * 255;
+        buf[1] = MIN(pixel[1], 1.0f) * 255;
+        buf[2] = MIN(pixel[2], 1.0f) * 255;
     }
 }
 
