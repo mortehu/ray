@@ -11,13 +11,11 @@ dot(const float x[3], const float y[3]) {
 
 void
 normalize(float x[3]) {
-    float len;
-    int i;
+    float len = 1.0f / sqrtf(dot(x, x));
 
-    len = sqrt(dot(x, x));
-
-    for(i = 0; i < 3; ++i)
-        x[i] /= len;
+    x[0] *= len;
+    x[1] *= len;
+    x[2] *= len;
 }
 
 float
