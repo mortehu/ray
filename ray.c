@@ -59,30 +59,45 @@ static Light lights[] = {
 
 static void
 trace(const float s[3], const float d[3], float pixel[3], int n, unsigned int mask) {
-    int i, j, k, m;
-    float l[3], r[3], t, y[3];
+    float nearest = HUGE_VAL;
+    int nearest_object = -1;
+    float nearest_y[3];
+    float nearest_r[3];
 
-    for(j = 0; j < LENGTH(objects); ++j) {
+    for(int j = 0; j < LENGTH(objects); ++j) {
+        float r[3], t, y[3];
+
         if ((1 << j) & mask) continue;
 
         t = sphere_intersect(y, r, s, d, objects[j].position, objects[j].radius);
 
-        if(unlikely(t > 0)) {
-            for(m = 0; m < LENGTH(lights); ++m) {
-                for(i = 0; i < 3; ++i)
-                    l[i] = lights[m].position[i] - y[i];
+        if(likely(t <= 0))
+          continue;
 
-                float lr_dot = dot(l, r);
-                if (lr_dot > 0) {
-                  float scale = lr_dot / sqrtf(dot(l, l)) / (1 << n);
-                  for(k = 0; k < 3; ++k)
-                      pixel[k] += lights[m].diffuse[k] * objects[j].diffuse[k] * scale;
-                }
-            }
-
-            trace(y, r, pixel, n + 1, (1 << j));
+        if (t < nearest) {
+            nearest = t;
+            nearest_object = j;
+            memcpy(nearest_y, y, sizeof(nearest_y));
+            memcpy(nearest_r, r, sizeof(nearest_y));
         }
     }
+
+    if (nearest_object == -1) return;
+
+    for(int m = 0; m < LENGTH(lights); ++m) {
+        float l[3];
+        for(int i = 0; i < 3; ++i)
+            l[i] = lights[m].position[i] - nearest_y[i];
+
+        float lr_dot = dot(l, nearest_r);
+        if (lr_dot > 0) {
+          float scale = lr_dot / sqrtf(dot(l, l)) / (1 << n);
+          for(int k = 0; k < 3; ++k)
+              pixel[k] += lights[m].diffuse[k] * objects[nearest_object].diffuse[k] * scale;
+        }
+    }
+
+    trace(nearest_y, nearest_r, pixel, n + 1, (1 << nearest_object));
 }
 
 static void
