@@ -35,6 +35,9 @@ sphere_intersect(float* restrict y, float* restrict r,
 
     t = -dot(v, d) - D;
 
+    if (t <= 0)
+        return -1;
+
     for(i = 0; i < 3; ++i) {
         y[i] = s[i] + t * d[i];
         n[i] = y[i] - c[i];
