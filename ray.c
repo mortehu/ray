@@ -32,6 +32,9 @@ typedef struct {
     long line;
 } ThreadArg;
 
+static float trace_vectors[HEIGHT][WIDTH][3];
+static int trace_vectors_initialized;
+
 static Object objects[] = {
     {.position={-1.414, -1, -3}, .radius=1, .diffuse={.8, 0, .8}},
     {.position={0, 1.414, -3}, .radius=1, .diffuse={0, .8, .8}},
@@ -44,7 +47,7 @@ static Light lights[] = {
 };
 
 static void
-trace(float s[3], float d[3], float pixel[3], int n) {
+trace(float s[3], const float d[3], float pixel[3], int n) {
     int i, j, k, m;
     float l[3], r[3], t, y[3];
 
@@ -71,23 +74,16 @@ trace_line(int l, unsigned char *buf) {
     static float s[3] = {0, 0, 0};
     float y = l - HEIGHT / 2;
 
-    for(int i = 0; i < 4 * WIDTH; i += 4) {
-        float x = (i / 4) - WIDTH / 2;
-
+    for(int i = 0; i < WIDTH; ++i) {
         float pixel[3];
         memset(pixel, '\0', sizeof(pixel));
 
-        float d[3];
-        d[0] = x / (WIDTH / 2);
-        d[1] = y / (HEIGHT / 2) * ((float)HEIGHT / (float)WIDTH);
-        d[2] = -1;
-
-        normalize(d);
+        const float* d = trace_vectors[l][i];
 
         trace(s, d, pixel, 1);
 
         for(int j = 0; j < 3; ++j)
-            buf[i + j] = MIN(255 * pixel[j], 255);
+            buf[i * 4 + j] = MIN(255 * pixel[j], 255);
     }
 }
 
@@ -100,8 +96,25 @@ thread(void *arg) {
     return NULL;
 }
 
+static void
+initialize_trace_vectors(void) {
+    for(int y = 0; y < HEIGHT; ++y) {
+        for(int x = 0; x < WIDTH; ++x) {
+          float* d = trace_vectors[y][x];
+          d[0] = ((float)x / WIDTH - 0.5f) * 2.0f;
+          d[1] = ((float)y / HEIGHT - 0.5f) * 2.0f * ((float)HEIGHT / WIDTH);
+          d[2] = -1;
+          normalize(d);
+        }
+    }
+    trace_vectors_initialized = 1;
+}
+
 void
 trace_scene(float time, unsigned char *buf, int threaded) {
+    if (!trace_vectors_initialized)
+      initialize_trace_vectors();
+
     objects[0].position[0] = 1.5 * cos(time);
     objects[0].position[1] = 1.5 * sin(time);
     objects[1].position[0] = 1.5 * cos(time + 1/3. * TAU);
