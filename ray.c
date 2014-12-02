@@ -78,9 +78,9 @@ trace(const float s[3], const float d[3], float pixel[3], int n, unsigned int ma
                   for(k = 0; k < 3; ++k)
                       pixel[k] += lights[m].diffuse[k] * objects[j].diffuse[k] * scale;
                 }
-
-                trace(y, r, pixel, n + 1, (1 << j));
             }
+
+            trace(y, r, pixel, n + 1, (1 << j));
         }
     }
 }
