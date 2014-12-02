@@ -47,11 +47,13 @@ static Light lights[] = {
 };
 
 static void
-trace(float s[3], const float d[3], float pixel[3], int n) {
+trace(const float s[3], const float d[3], float pixel[3], int n, unsigned int mask) {
     int i, j, k, m;
     float l[3], r[3], t, y[3];
 
     for(j = 0; j < LENGTH(objects); ++j) {
+        if ((1 << j) & mask) continue;
+
         t = sphere_intersect(y, r, s, d, objects[j].position, objects[j].radius);
 
         if(t > 0) {
@@ -66,7 +68,7 @@ trace(float s[3], const float d[3], float pixel[3], int n) {
                       pixel[k] += lights[m].diffuse[k] * objects[j].diffuse[k] * scale;
                 }
 
-                trace(y, r, pixel, n + 1);
+                trace(y, r, pixel, n + 1, (1 << j));
             }
         }
     }
@@ -79,7 +81,7 @@ trace_line(int l, unsigned char *buf) {
     for(int i = 0; i < WIDTH; ++i, buf += 4) {
         float pixel[3] = { 0, 0, 0 };
 
-        trace(s, trace_vectors[l][i], pixel, 1);
+        trace(s, trace_vectors[l][i], pixel, 1, 0);
 
         buf[0] = MIN(pixel[0], 1.0f) * 255;
         buf[1] = MIN(pixel[1], 1.0f) * 255;
