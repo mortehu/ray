@@ -49,10 +49,10 @@ static float trace_vectors[HEIGHT][WIDTH][3];
 static int trace_vectors_initialized;
 
 static Object objects[] = {
-    {.position={-1.414, -1, -3}, .radius=1, .diffuse={.8, .0, .8}, .specular={.8, .8, .8}, .subtract=0},
-    {.position={0, 1.414, -3}, .radius=1, .diffuse={.0, .8, .8}, .specular={.8, .8, .8}, .subtract=0},
-    {.position={0, 0, -3}, .radius=1.5, .diffuse={.8, .8, .8}, .specular={.8, .8, .8}, .subtract=1},
-    {.position={1.414, -1, -3}, .radius=1, .diffuse={.8, .8, .0}, .specular={.8, .8, .8}, .subtract=0}
+    {.position={-1.414, -1, -3}, .radius=1, .diffuse={.8, .0, .8}, .specular={.7, .6, .7}, .subtract=0},
+    {.position={0, 1.414, -3}, .radius=1, .diffuse={.0, .8, .8}, .specular={.6, .7, .7}, .subtract=0},
+    {.position={0, 0, -3}, .radius=1.5, .diffuse={.8, .8, .8}, .specular={.7, .7, .7}, .subtract=1},
+    {.position={1.414, -1, -3}, .radius=1, .diffuse={.8, .8, .0}, .specular={.7, .7, .6}, .subtract=0}
 };
 static const Light lights[] = {
     {.position={-3, 3, -4}, .diffuse={0, .6, .6}},
@@ -61,7 +61,7 @@ static const Light lights[] = {
 static const float ambient[3] = {0.2, 0.1, 0.1};
 
 static void
-trace(const float s[3], const float d[3], float pixel[3], int n, unsigned int mask) {
+trace(const float s[3], const float d[3], float pixel[3], int n) {
     // Reflections in concave objects can go really deep, so we need to limit
     // the recursion depth.
     if (n > 6) return;
@@ -74,7 +74,7 @@ trace(const float s[3], const float d[3], float pixel[3], int n, unsigned int ma
     for(size_t j = 0; j < LENGTH(objects); ++j) {
         float r[3], t, y[3];
 
-        if (((1 << j) & mask) || objects[j].subtract) continue;
+        if (objects[j].subtract) continue;
 
         t = sphere_intersect(y, r, s, d, objects[j].position, objects[j].radius, 0);
 
@@ -102,7 +102,7 @@ trace(const float s[3], const float d[3], float pixel[3], int n, unsigned int ma
 
     if (nearest_object == -1) return;
 
-    trace(nearest_y, nearest_r, pixel, n + 1, 1 << nearest_object);
+    trace(nearest_y, nearest_r, pixel, n + 1);
 
     for (int k = 0; k < 3; ++k)
         pixel[k] = pixel[k] * objects[nearest_object].specular[k] + ambient[k] * objects[nearest_object].diffuse[k];
@@ -132,7 +132,7 @@ trace_line(int l, unsigned char *buf) {
     for(int i = 0; i < WIDTH; ++i, buf += 4) {
         float pixel[3] = { 0, 0, 0 };
 
-        trace(s, trace_vectors[l][i], pixel, 1, 0);
+        trace(s, trace_vectors[l][i], pixel, 1);
 
         buf[0] = MIN(pixel[0], 1.0f) * 255;
         buf[1] = MIN(pixel[1], 1.0f) * 255;
@@ -177,13 +177,13 @@ trace_scene(float time, unsigned char *buf, int threaded) {
     if (!trace_vectors_initialized)
       initialize_trace_vectors();
 
-    objects[0].position[0] = (1.5 + 0.35 * sin(1.1 * time)) * cos(0.5 * time);
-    objects[0].position[1] = (1.5 + 0.35 * sin(1.1 * time)) * sin(0.5 * time);
-    objects[1].position[0] = (1.5 + 0.35 * sin(1.1 * time)) * cos(0.5 * time + 1/3. * TAU);
-    objects[1].position[1] = (1.5 + 0.35 * sin(1.1 * time)) * sin(0.5 * time + 1/3. * TAU);
-    objects[3].position[0] = (1.5 + 0.35 * sin(1.1 * time)) * cos(0.5 * time + 2/3. * TAU);
-    objects[3].position[1] = (1.5 + 0.35 * sin(1.1 * time)) * sin(0.5 * time + 2/3. * TAU);
-    objects[2].position[2] = -3 + 0.5 * sin(time * 2.0);
+    objects[0].position[0] = (1.5 + 0.35 * sin(1.1 * time + 0.0)) * cos(0.5 * time);
+    objects[0].position[1] = (1.5 + 0.35 * sin(1.1 * time + 2.5)) * sin(0.5 * time);
+    objects[1].position[0] = (1.5 + 0.35 * sin(1.1 * time + 2.0)) * cos(0.5 * time + 1/3. * TAU);
+    objects[1].position[1] = (1.5 + 0.35 * sin(1.1 * time + 1.5)) * sin(0.5 * time + 1/3. * TAU);
+    objects[3].position[0] = (1.5 + 0.35 * sin(1.1 * time + 1.0)) * cos(0.5 * time + 2/3. * TAU);
+    objects[3].position[1] = (1.5 + 0.35 * sin(1.1 * time + 0.5)) * sin(0.5 * time + 2/3. * TAU);
+    objects[2].position[2] = -3 + 0.2 * sin(time * 1.2);
 
     if(threaded) {
         ThreadArg arg;
