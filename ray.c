@@ -56,6 +56,7 @@ static Light lights[] = {
     {.position={-3, 3, -4}, .diffuse={0, .6, .6}},
     {.position={0, 30, -4}, .diffuse={1, 1, 1}}
 };
+static float ambient[3] = {0.2, 0.1, 0.1};
 
 static void
 trace(const float s[3], const float d[3], float pixel[3], int n, unsigned int mask) {
@@ -92,8 +93,11 @@ trace(const float s[3], const float d[3], float pixel[3], int n, unsigned int ma
         float lr_dot = dot(l, nearest_r);
         if (lr_dot > 0) {
           float scale = lr_dot / sqrtf(dot(l, l)) / (1 << n);
-          for(int k = 0; k < 3; ++k)
-              pixel[k] += lights[m].diffuse[k] * objects[nearest_object].diffuse[k] * scale;
+          for(int k = 0; k < 3; ++k) {
+              float diffuse = lights[m].diffuse[k] * objects[nearest_object].diffuse[k] * scale;
+              if (diffuse < 0.0f) diffuse = 0.0f;
+              pixel[k] += diffuse + ambient[k] * objects[nearest_object].diffuse[k];
+          }
         }
     }
 
