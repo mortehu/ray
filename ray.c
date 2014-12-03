@@ -29,6 +29,7 @@ typedef struct {
     float position[3];
     float radius;
     float diffuse[3];
+    int subtract;
 } Object;
 
 typedef struct {
@@ -47,10 +48,10 @@ static float trace_vectors[HEIGHT][WIDTH][3];
 static int trace_vectors_initialized;
 
 static Object objects[] = {
-    {.position={-1.414, -1, -3}, .radius=1, .diffuse={.8, 0, .8}},
-    {.position={0, 1.414, -3}, .radius=1, .diffuse={0, .8, .8}},
-    {.position={0, 0, -3}, .radius=.25, .diffuse={.8, .8, .8}},
-    {.position={1.414, -1, -3}, .radius=1, .diffuse={.8, .8, 0}}
+    {.position={-1.414, -1, -3}, .radius=1, .diffuse={.8, 0, .8}, .subtract=0},
+    {.position={0, 1.414, -3}, .radius=1, .diffuse={0, .8, .8}, .subtract=0},
+    {.position={0, 0, -3}, .radius=1.5, .diffuse={.8, .8, .8}, .subtract=1},
+    {.position={1.414, -1, -3}, .radius=1, .diffuse={.8, .8, 0}, .subtract=0}
 };
 static Light lights[] = {
     {.position={-3, 3, -4}, .diffuse={0, .6, .6}},
@@ -60,27 +61,42 @@ static float ambient[3] = {0.2, 0.1, 0.1};
 
 static void
 trace(const float s[3], const float d[3], float pixel[3], int n, unsigned int mask) {
+    // Reflections in concave objects can go really deep, so we need to limit
+    // the recursion depth.
+    if (n > 6) return;
+
     float nearest = HUGE_VAL;
     int nearest_object = -1;
     float nearest_y[3];
     float nearest_r[3];
 
-    for(int j = 0; j < LENGTH(objects); ++j) {
+    for(size_t j = 0; j < LENGTH(objects); ++j) {
         float r[3], t, y[3];
 
-        if ((1 << j) & mask) continue;
+        if (((1 << j) & mask) || objects[j].subtract) continue;
 
-        t = sphere_intersect(y, r, s, d, objects[j].position, objects[j].radius);
+        t = sphere_intersect(y, r, s, d, objects[j].position, objects[j].radius, 0);
 
-        if(likely(t <= 0))
+        if(likely(t <= 0) || t > nearest)
           continue;
 
-        if (t < nearest) {
-            nearest = t;
-            nearest_object = j;
-            memcpy(nearest_y, y, sizeof(nearest_y));
-            memcpy(nearest_r, r, sizeof(nearest_y));
+        size_t k;
+        for (k = 0; k < LENGTH(objects); ++k) {
+            if (!objects[k].subtract) continue;
+            if (POW2(y[0] - objects[k].position[0]) + POW2(y[1] - objects[k].position[1]) + POW2(y[2] - objects[k].position[2]) > POW2(objects[k].radius)) continue;
+
+            t = sphere_intersect(y, r, s, d, objects[k].position, objects[k].radius, 1);
+
+            break;
         }
+
+        if(likely(t <= 0) || t > nearest)
+          continue;
+
+        nearest = t;
+        nearest_object = j;
+        memcpy(nearest_y, y, sizeof(nearest_y));
+        memcpy(nearest_r, r, sizeof(nearest_y));
     }
 
     if (nearest_object == -1) return;
@@ -101,7 +117,7 @@ trace(const float s[3], const float d[3], float pixel[3], int n, unsigned int ma
         }
     }
 
-    trace(nearest_y, nearest_r, pixel, n + 1, (1 << nearest_object));
+    trace(nearest_y, nearest_r, pixel, n + 1, 1 << nearest_object);
 }
 
 static void
@@ -156,13 +172,13 @@ trace_scene(float time, unsigned char *buf, int threaded) {
     if (!trace_vectors_initialized)
       initialize_trace_vectors();
 
-    objects[0].position[0] = 1.5 * cos(time);
-    objects[0].position[1] = 1.5 * sin(time);
-    objects[1].position[0] = 1.5 * cos(time + 1/3. * TAU);
-    objects[1].position[1] = 1.5 * sin(time + 1/3. * TAU);
-    objects[3].position[0] = 1.5 * cos(time + 2/3. * TAU);
-    objects[3].position[1] = 1.5 * sin(time + 2/3. * TAU);
-    objects[2].position[2] = -3 + 2 * sin(time * 2);
+    objects[0].position[0] = (1.5 + 0.35 * sin(1.1 * time)) * cos(0.5 * time);
+    objects[0].position[1] = (1.5 + 0.35 * sin(1.1 * time)) * sin(0.5 * time);
+    objects[1].position[0] = (1.5 + 0.35 * sin(1.1 * time)) * cos(0.5 * time + 1/3. * TAU);
+    objects[1].position[1] = (1.5 + 0.35 * sin(1.1 * time)) * sin(0.5 * time + 1/3. * TAU);
+    objects[3].position[0] = (1.5 + 0.35 * sin(1.1 * time)) * cos(0.5 * time + 2/3. * TAU);
+    objects[3].position[1] = (1.5 + 0.35 * sin(1.1 * time)) * sin(0.5 * time + 2/3. * TAU);
+    objects[2].position[2] = -3 + 0.5 * sin(time * 2.0);
 
     if(threaded) {
         ThreadArg arg;

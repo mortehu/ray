@@ -2,8 +2,6 @@
 
 #include <math.h>
 
-#define POW2(x) ((x) * (x))
-
 float
 dot(const float x[3], const float y[3]) {
     return x[0] * y[0] + x[1] * y[1] + x[2] * y[2];
@@ -21,7 +19,7 @@ normalize(float x[3]) {
 float
 sphere_intersect(float* restrict y, float* restrict r,
                  const float* restrict s, const float* restrict d,
-                 const float* restrict c, float R) {
+                 const float* restrict c, float R, int invert) {
     int i;
     float D, n[3], t, v[3];
 
@@ -33,7 +31,10 @@ sphere_intersect(float* restrict y, float* restrict r,
     if(D < 0)
         return -1;
 
-    t = -dot(v, d) - D;
+    if (invert)
+      t = -dot(v, d) + D;
+    else
+      t = -dot(v, d) - D;
 
     if (t <= 0)
         return -1;
