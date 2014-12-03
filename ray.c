@@ -29,6 +29,7 @@ typedef struct {
     float position[3];
     float radius;
     float diffuse[3];
+    float specular[3];
     int subtract;
 } Object;
 
@@ -48,16 +49,16 @@ static float trace_vectors[HEIGHT][WIDTH][3];
 static int trace_vectors_initialized;
 
 static Object objects[] = {
-    {.position={-1.414, -1, -3}, .radius=1, .diffuse={.8, 0, .8}, .subtract=0},
-    {.position={0, 1.414, -3}, .radius=1, .diffuse={0, .8, .8}, .subtract=0},
-    {.position={0, 0, -3}, .radius=1.5, .diffuse={.8, .8, .8}, .subtract=1},
-    {.position={1.414, -1, -3}, .radius=1, .diffuse={.8, .8, 0}, .subtract=0}
+    {.position={-1.414, -1, -3}, .radius=1, .diffuse={.8, .0, .8}, .specular={.8, .8, .8}, .subtract=0},
+    {.position={0, 1.414, -3}, .radius=1, .diffuse={.0, .8, .8}, .specular={.8, .8, .8}, .subtract=0},
+    {.position={0, 0, -3}, .radius=1.5, .diffuse={.8, .8, .8}, .specular={.8, .8, .8}, .subtract=1},
+    {.position={1.414, -1, -3}, .radius=1, .diffuse={.8, .8, .0}, .specular={.8, .8, .8}, .subtract=0}
 };
-static Light lights[] = {
+static const Light lights[] = {
     {.position={-3, 3, -4}, .diffuse={0, .6, .6}},
     {.position={0, 30, -4}, .diffuse={1, 1, 1}}
 };
-static float ambient[3] = {0.2, 0.1, 0.1};
+static const float ambient[3] = {0.2, 0.1, 0.1};
 
 static void
 trace(const float s[3], const float d[3], float pixel[3], int n, unsigned int mask) {
@@ -101,23 +102,27 @@ trace(const float s[3], const float d[3], float pixel[3], int n, unsigned int ma
 
     if (nearest_object == -1) return;
 
+    trace(nearest_y, nearest_r, pixel, n + 1, 1 << nearest_object);
+
+    for (int k = 0; k < 3; ++k)
+        pixel[k] = pixel[k] * objects[nearest_object].specular[k] + ambient[k] * objects[nearest_object].diffuse[k];
+
     for(int m = 0; m < LENGTH(lights); ++m) {
         float l[3];
         for(int i = 0; i < 3; ++i)
             l[i] = lights[m].position[i] - nearest_y[i];
 
         float lr_dot = dot(l, nearest_r);
-        if (lr_dot > 0) {
-          float scale = lr_dot / sqrtf(dot(l, l)) / (1 << n);
-          for(int k = 0; k < 3; ++k) {
-              float diffuse = lights[m].diffuse[k] * objects[nearest_object].diffuse[k] * scale;
-              if (diffuse < 0.0f) diffuse = 0.0f;
-              pixel[k] += diffuse + ambient[k] * objects[nearest_object].diffuse[k];
-          }
-        }
-    }
+        if (lr_dot <= 0) continue;
 
-    trace(nearest_y, nearest_r, pixel, n + 1, 1 << nearest_object);
+        float scale = lr_dot / sqrtf(dot(l, l)) / (1 << n);
+        // The cutoff at 0.05 is for artistic reasons; 0.0 would be more
+        // realistic.
+        if (scale <= 0.05) continue;
+
+        for(int k = 0; k < 3; ++k)
+            pixel[k] += lights[m].diffuse[k] * objects[nearest_object].diffuse[k] * scale;
+    }
 }
 
 static void
