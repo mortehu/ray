@@ -13,7 +13,7 @@ init(int argc, char **argv, int w, int h) {
 
     glutInitWindowPosition(0, 0);
     glutInitWindowSize(w, h);
-    glutInitDisplayMode(GLUT_RGB);
+    glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE);
     glutCreateWindow(argv[0]);
 
     glDepthMask(0);
