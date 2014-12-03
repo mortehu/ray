@@ -5,6 +5,7 @@
 #include "ray.h"
 
 static int threaded;
+static int viewport_width, viewport_height;
 
 static int
 init(int argc, char **argv, int w, int h) {
@@ -32,6 +33,8 @@ display(void) {
 
     unsigned char* buffer = calloc(4, WIDTH * HEIGHT);
     trace_scene(time, buffer, threaded);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glRasterPos2d(-(double)WIDTH / viewport_width, -(double)HEIGHT / viewport_height);
     glDrawPixels(WIDTH, HEIGHT, GL_BGRA, GL_UNSIGNED_BYTE, buffer);
     free(buffer);
 
@@ -40,6 +43,8 @@ display(void) {
 
 static void
 reshape(int w, int h) {
+    viewport_width = w;
+    viewport_height = h;
     glViewport(0, 0, w, h);
 }
 
