@@ -4,7 +4,7 @@
 
 #include "ray.h"
 
-static int threaded;
+static int threaded = 1;
 static int viewport_width, viewport_height;
 
 static int
@@ -54,11 +54,9 @@ keyboard(unsigned char key, int x, int y) {
     case 27:
         exit(EXIT_SUCCESS);
         break;
+
     case 't':
-        if(threaded)
-            threaded = 0;
-        else
-            threaded = 1;
+        threaded = !threaded;
         break;
     }
 }
