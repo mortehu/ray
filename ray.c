@@ -9,8 +9,6 @@
 
 #include "3dmath.h"
 
-#define BUFFER_SIZE (WIDTH * HEIGHT * 4)
-
 #define LENGTH(array) (sizeof(array) / sizeof(array[0]))
 #define MAX(x, y) (x > y ? x : y)
 #define MIN(x, y) (x < y ? x : y)
@@ -41,12 +39,13 @@ typedef struct {
 typedef struct {
     pthread_mutex_t mutex;
 
+    int width, height;
     unsigned char* buffer;
     long next_line;
 } ThreadArg;
 
-static float trace_vectors[HEIGHT][WIDTH][3];
-static int trace_vectors_initialized;
+static float* trace_vectors;
+static int trace_vectors_width, trace_vectors_height;
 
 static Object objects[] = {
     {.position={-1.414, -1, -3}, .radius=1, .diffuse={.8, .0, .8}, .specular={.7, .6, .7}, .subtract=0},
@@ -126,13 +125,13 @@ trace(const float s[3], const float d[3], float pixel[3], int n) {
 }
 
 static void
-trace_line(int l, unsigned char *buf) {
+trace_line(int l, int width, unsigned char *buf) {
     static const float s[3] = {0, 0, 8};
 
-    for(int i = 0; i < WIDTH; ++i, buf += 4) {
+    for(int i = 0; i < width; ++i, buf += 4) {
         float pixel[3] = { 0, 0, 0 };
 
-        trace(s, trace_vectors[l][i], pixel, 1);
+        trace(s, &trace_vectors[(l * width + i) * 3], pixel, 1);
 
         buf[0] = MIN(pixel[0], 1.0f) * 255;
         buf[1] = MIN(pixel[1], 1.0f) * 255;
@@ -146,11 +145,11 @@ thread(void *arg) {
 
     for (;;) {
         pthread_mutex_lock(&thread_arg->mutex);
-        if (thread_arg->next_line == HEIGHT) break;
+        if (thread_arg->next_line == thread_arg->height) break;
         long line = thread_arg->next_line++;
         pthread_mutex_unlock(&thread_arg->mutex);
 
-        trace_line(line, thread_arg->buffer + line * 4 * WIDTH);
+        trace_line(line, thread_arg->width, thread_arg->buffer + line * 4 * thread_arg->width);
     }
 
     pthread_mutex_unlock(&thread_arg->mutex);
@@ -159,23 +158,29 @@ thread(void *arg) {
 }
 
 static void
-initialize_trace_vectors(void) {
-    for(int y = 0; y < HEIGHT; ++y) {
-        for(int x = 0; x < WIDTH; ++x) {
-          float* d = trace_vectors[y][x];
-          d[0] = ((float)x / WIDTH - 0.5f) * 0.5f;
-          d[1] = ((float)y / HEIGHT - 0.5f) * 0.5f * ((float)HEIGHT / WIDTH);
+initialize_trace_vectors(int width, int height) {
+    trace_vectors = calloc(width * height, 3 * sizeof(float));
+    trace_vectors_width = width;
+    trace_vectors_height = height;
+    for(int y = 0; y < height; ++y) {
+        for(int x = 0; x < width; ++x) {
+          float* d = &trace_vectors[(y * width + x) * 3];
+          d[0] = ((float)x / width - 0.5f) * 0.5f * ((float)width / height);
+          d[1] = ((float)y / height - 0.5f) * 0.5f;
           d[2] = -1;
           normalize(d);
         }
     }
-    trace_vectors_initialized = 1;
 }
 
 void
-trace_scene(float time, unsigned char *buf, int threaded) {
-    if (!trace_vectors_initialized)
-      initialize_trace_vectors();
+trace_scene(float time, int width, int height, unsigned char *buf, int threaded) {
+    if (trace_vectors && (trace_vectors_width != width || trace_vectors_height != height)) {
+      free(trace_vectors);
+      trace_vectors = 0;
+    }
+    if (!trace_vectors)
+      initialize_trace_vectors(width, height);
 
     objects[0].position[0] = (1.5 + 0.35 * sin(1.1 * time + 0.0)) * cos(0.5 * time);
     objects[0].position[1] = (1.5 + 0.35 * sin(1.1 * time + 2.5)) * sin(0.5 * time);
@@ -188,6 +193,8 @@ trace_scene(float time, unsigned char *buf, int threaded) {
     if(threaded) {
         ThreadArg arg;
         memset(&arg, 0, sizeof(arg));
+        arg.width = width;
+        arg.height = height;
         pthread_mutex_init(&arg.mutex, NULL);
         arg.buffer = buf;
 
@@ -206,7 +213,7 @@ trace_scene(float time, unsigned char *buf, int threaded) {
             pthread_join(threads[i], NULL);
         free(threads);
     } else {
-        for(int i = 0; i < HEIGHT; ++i)
-            trace_line(i, buf + i * 4 * WIDTH);
+        for(int i = 0; i < height; ++i)
+            trace_line(i, width, buf + i * 4 * width);
     }
 }

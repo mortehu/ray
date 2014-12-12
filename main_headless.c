@@ -9,15 +9,18 @@ static const size_t kFramesToRender = 100;
 
 int
 main(int argc, char** argv) {
+    const size_t kWidth = 1000;
+    const size_t kHeight = 1000;
+
     fprintf(stderr, "Rendering %zu frames\n", kFramesToRender);
 
-    unsigned char* buffer = calloc(4, WIDTH * HEIGHT);
+    unsigned char* buffer = calloc(4, kWidth * kHeight);
 
     struct timeval start;
     gettimeofday(&start, NULL);
 
     for (size_t i = 0; i < kFramesToRender; ++i)
-        trace_scene(i * 0.01f, buffer, 0);
+        trace_scene(i * 0.01f, kWidth, kHeight, buffer, 0);
 
     struct timeval end;
     gettimeofday(&end, NULL);

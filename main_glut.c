@@ -31,15 +31,11 @@ display(void) {
         exit(0);
     float time = (float)glutGet(GLUT_ELAPSED_TIME) / 1000;
 
-    unsigned char* buffer = calloc(4, WIDTH * HEIGHT);
-    trace_scene(time, buffer, threaded);
+    unsigned char* buffer = calloc(viewport_width * viewport_height, 4);
+    trace_scene(time, viewport_width, viewport_height, buffer, threaded);
     glClear(GL_COLOR_BUFFER_BIT);
-    auto raster_x = -(double)WIDTH / viewport_width;
-    auto raster_y = -(double)HEIGHT / viewport_height;
-    if (raster_x < -1.0) raster_x = -1.0;
-    if (raster_y < -1.0) raster_y = -1.0;
-    glRasterPos2d(raster_x, raster_y);
-    glDrawPixels(WIDTH, HEIGHT, GL_BGRA, GL_UNSIGNED_BYTE, buffer);
+    glRasterPos2d(-1.0, -1.0);
+    glDrawPixels(viewport_width, viewport_height, GL_BGRA, GL_UNSIGNED_BYTE, buffer);
     free(buffer);
 
     glutSwapBuffers();
@@ -68,7 +64,7 @@ keyboard(unsigned char key, int x, int y) {
 
 int
 main(int argc, char **argv) {
-    if (init(argc, argv, WIDTH, HEIGHT))
+    if (init(argc, argv, 800, 600))
         return EXIT_FAILURE;
 
     glutDisplayFunc(display);
