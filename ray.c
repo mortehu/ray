@@ -51,7 +51,8 @@ static Object objects[] = {
     {.position={-1.414, -1, -3}, .radius=1, .diffuse={.8, .0, .8}, .specular={.7, .6, .7}, .subtract=0},
     {.position={0, 1.414, -3}, .radius=1, .diffuse={.0, .8, .8}, .specular={.6, .7, .7}, .subtract=0},
     {.position={0, 0, -3}, .radius=1.5, .diffuse={.8, .8, .8}, .specular={.7, .7, .7}, .subtract=1},
-    {.position={1.414, -1, -3}, .radius=1, .diffuse={.8, .8, .0}, .specular={.7, .7, .6}, .subtract=0}
+    {.position={1.414, -1, -3}, .radius=1, .diffuse={.8, .8, .0}, .specular={.7, .7, .6}, .subtract=0},
+    {.position={0, 0, -3}, .radius=1.1, .diffuse={.9, .9, .9}, .specular={.9, .9, .9}, .subtract=2}
 };
 static const Light lights[] = {
     {.position={-3, 3, -4}, .diffuse={0, .6, .6}},
@@ -73,25 +74,27 @@ trace(const float s[3], const float d[3], float pixel[3], int n) {
     for(size_t j = 0; j < LENGTH(objects); ++j) {
         float r[3], t, y[3];
 
-        if (objects[j].subtract) continue;
+        if (objects[j].subtract == 1) continue;
 
         t = sphere_intersect(y, r, s, d, objects[j].position, objects[j].radius, 0);
 
         if(likely(t <= 0) || t > nearest)
           continue;
 
-        size_t k;
-        for (k = 0; k < LENGTH(objects); ++k) {
-            if (!objects[k].subtract) continue;
-            if (POW2(y[0] - objects[k].position[0]) + POW2(y[1] - objects[k].position[1]) + POW2(y[2] - objects[k].position[2]) > POW2(objects[k].radius)) continue;
+        if (objects[j].subtract == 0) {
+          size_t k;
+          for (k = 0; k < LENGTH(objects); ++k) {
+              if (!objects[k].subtract) continue;
+              if (POW2(y[0] - objects[k].position[0]) + POW2(y[1] - objects[k].position[1]) + POW2(y[2] - objects[k].position[2]) > POW2(objects[k].radius)) continue;
 
-            t = sphere_intersect(y, r, s, d, objects[k].position, objects[k].radius, 1);
+              t = sphere_intersect(y, r, s, d, objects[k].position, objects[k].radius, 1);
 
-            break;
+              break;
+          }
+
+          if(likely(t <= 0) || t > nearest)
+            continue;
         }
-
-        if(likely(t <= 0) || t > nearest)
-          continue;
 
         nearest = t;
         nearest_object = j;
@@ -189,6 +192,7 @@ trace_scene(float time, int width, int height, unsigned char *buf, int threaded)
     objects[3].position[0] = (1.5 + 0.35 * sin(1.1 * time + 1.0)) * cos(0.5 * time + 2/3. * TAU);
     objects[3].position[1] = (1.5 + 0.35 * sin(1.1 * time + 0.5)) * sin(0.5 * time + 2/3. * TAU);
     objects[2].position[2] = -3 + 0.2 * sin(time * 1.2);
+    memcpy(objects[4].position, objects[2].position, sizeof(objects[4].position));
 
     if(threaded) {
         ThreadArg arg;
