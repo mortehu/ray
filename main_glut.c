@@ -34,7 +34,11 @@ display(void) {
     unsigned char* buffer = calloc(4, WIDTH * HEIGHT);
     trace_scene(time, buffer, threaded);
     glClear(GL_COLOR_BUFFER_BIT);
-    glRasterPos2d(-(double)WIDTH / viewport_width, -(double)HEIGHT / viewport_height);
+    auto raster_x = -(double)WIDTH / viewport_width;
+    auto raster_y = -(double)HEIGHT / viewport_height;
+    if (raster_x < -1.0) raster_x = -1.0;
+    if (raster_y < -1.0) raster_y = -1.0;
+    glRasterPos2d(raster_x, raster_y);
     glDrawPixels(WIDTH, HEIGHT, GL_BGRA, GL_UNSIGNED_BYTE, buffer);
     free(buffer);
 
