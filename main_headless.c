@@ -20,7 +20,7 @@ main(int argc, char** argv) {
     gettimeofday(&start, NULL);
 
     for (size_t i = 0; i < kFramesToRender; ++i)
-        trace_scene(i * 0.01f, kWidth, kHeight, buffer, 0);
+        trace_scene(i * 0.01f, kWidth, kHeight, buffer, 1);
 
     struct timeval end;
     gettimeofday(&end, NULL);
