@@ -1,4 +1,4 @@
-AM_CFLAGS = -Wall -Wextra -pedantic -std=c99 -flto
+AM_CFLAGS = -Wall -pedantic -std=c99 -flto
 
 bin_PROGRAMS = ray ray-headless
 
